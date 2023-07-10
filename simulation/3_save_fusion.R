@@ -65,26 +65,43 @@ if (file.exists(FUSION.res)){
     next
   }
   
-  # Create a data frame including SNPs and estimated eQTL weights
-  wgt.df = data.frame(SNP = row.names(wgt.matrix), ES = wgt.matrix[, mod.best],
-                      TargetID = gene)
+  if ( names(mod.best) == "lasso" || names(mod.best) == "enet" ) {
+    keep = wgt.matrix[,mod.best] != 0
+  } else if ( names(mod.best) == "top1" ) {
+    keep = which.max(wgt.matrix[,mod.best]^2)
+  } else { 
+    keep = 1:nrow(wgt.matrix)
+  }
   
-  # Format snps file 
-  colnames(snps) = c("CHROM", "SNP", "BP", "POS", "A1", "A2")
+  if (sum(keep) == 0){
+    
+    cat("Target", ID, "No Fusion Results.\n", sep = " ")
+    
+  } else {
+    
+    # Create a data frame including SNPs and estimated eQTL weights
+    wgt.df = data.frame(SNP = row.names(wgt.matrix), ES = wgt.matrix[, mod.best],
+                        TargetID = gene)
+    
+    # Format snps file 
+    colnames(snps) = c("CHROM", "SNP", "BP", "POS", "A1", "A2")
+    
+    # Merge snps with wgt.df to get estimated eQTL weights for each SNP
+    df_out = merge(snps, wgt.df, by = "SNP")
+    
+    # Save the weights
+    write.table(df_out[, out_cols], 
+                file = out_file, 
+                row.names = F,
+                col.names = F,
+                append = T,
+                quote = F,
+                sep = "\t")
+    
+    print(paste("Done res", gene))
+    
+  }
   
-  # Merge snps with wgt.df to get estimated eQTL weights for each SNP
-  df_out = merge(snps, wgt.df, by = "SNP")
-  
-  # Save the weights
-  write.table(df_out[, out_cols], 
-              file = out_file, 
-              row.names = F,
-              col.names = F,
-              append = T,
-              quote = F,
-              sep = "\t")
-  
-  print(paste("Done res", gene))
   
 } else {
   
